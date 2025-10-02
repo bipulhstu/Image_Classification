@@ -50,6 +50,10 @@ This project uses a fine-tuned MobileNetV2 model to identify and classify Bangla
 
 ## 🚀 Deployment
 
+### 🔧 Requirements Fix
+
+If you encounter TensorFlow version compatibility issues during deployment, the requirements.txt has been updated with flexible version constraints that work across different Python versions and deployment platforms.
+
 ### Local Deployment
 
 1. **Clone the repository**:
@@ -87,6 +91,25 @@ This project uses a fine-tuned MobileNetV2 model to identify and classify Bangla
    web: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
    ```
 2. Deploy using Heroku CLI or GitHub integration
+
+## 🛌 Troubleshooting
+
+### Common Deployment Issues
+
+#### TensorFlow Version Compatibility
+If you encounter TensorFlow version errors:
+1. The requirements.txt uses flexible versioning (`tensorflow` instead of `tensorflow==2.13.0`)
+2. This allows the deployment platform to choose the compatible version
+3. For local development, you may need: `pip install tensorflow>=2.15.0`
+
+#### Model File Issues
+- Ensure either `best_model.h5` or `flower_classifier.h5` exists in the project directory
+- Model files are large (24MB) - some platforms may have size limits
+- Consider using Git LFS for model files in version control
+
+#### Memory Issues
+- TensorFlow models require sufficient RAM (recommend at least 1GB)
+- Consider using smaller model architectures for resource-constrained environments
 
 #### Google Cloud Run
 1. Create Dockerfile
