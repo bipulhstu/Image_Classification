@@ -2,6 +2,12 @@
 
 A deep learning-powered web application for classifying 13 different types of Bangladeshi flowers using MobileNetV2 architecture with transfer learning.
 
+## 🌐 Live Demo
+
+**🚀 Try the app now:** [https://flower-image-classify.streamlit.app/](https://flower-image-classify.streamlit.app/)
+
+Upload any flower image and get instant classification results with confidence scores!
+
 ## 🌺 Overview
 
 This project uses a fine-tuned MobileNetV2 model to identify and classify Bangladeshi flowers with an impressive **99.87% validation accuracy**. The model was trained on the ColoredFlowersBD dataset containing 13 different flower species commonly found in Bangladesh.
