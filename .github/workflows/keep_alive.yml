@@ -2,8 +2,8 @@ name: Keep Streamlit App Alive
 
 on:
   schedule:
-    # Runs every 4 days at 06:00 UTC (Streamlit sleeps after ~7 days of inactivity)
-    - cron: '0 6 */4 * *'
+    # Runs every 8 hours (at 00:00, 08:00, 16:00 UTC) so it never hits the 12-hour idle sleep threshold
+    - cron: '0 */8 * * *'
   workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
 
 jobs:

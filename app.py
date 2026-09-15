@@ -70,6 +70,9 @@ def load_model():
 
 def preprocess_image(image):
     """Preprocess the image for prediction"""
+    # Ensure RGB mode (handles PNG with alpha, grayscale, CMYK, etc.)
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
     # Resize image to 224x224
     image = image.resize((224, 224))
     # Convert to array
@@ -91,12 +94,12 @@ def predict_flower(model, image, class_names):
         
         # Get predicted class and confidence
         predicted_class_idx = np.argmax(prediction[0])
-        confidence = prediction[0][predicted_class_idx]
+        confidence = float(prediction[0][predicted_class_idx])
         predicted_class = class_names[predicted_class_idx]
         
         # Get top 3 predictions
         top_3_idx = np.argsort(prediction[0])[-3:][::-1]
-        top_3_predictions = [(class_names[i], prediction[0][i]) for i in top_3_idx]
+        top_3_predictions = [(class_names[i], float(prediction[0][i])) for i in top_3_idx]
         
         return predicted_class, confidence, top_3_predictions
     except Exception as e:
@@ -106,7 +109,7 @@ def predict_flower(model, image, class_names):
 def main():
     # Header
     st.markdown('<h1 class="main-header">🌸 Bangladeshi Flower Classifier</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="description">Upload an image of a flower to identify its species using our trained MobileNetV2 model</p>', unsafe_allow_html=True)
+    st.markdown('<p class="description">Identify 13 species of Bangladeshi flowers in real time using our fine-tuned MobileNetV2 deep learning model</p>', unsafe_allow_html=True)
     
     # Load model
     model, class_names = load_model()
@@ -126,56 +129,113 @@ def main():
         for i, flower in enumerate(class_names, 1):
             st.write(f'{i}. {flower}')
     
-    # Main content
+    # Discover available sample images
+    sample_dir = 'sample_images'
+    sample_files = []
+    if os.path.exists(sample_dir):
+        valid_exts = ('.jpg', '.jpeg', '.png', '.webp')
+        sample_files = [f for f in sorted(os.listdir(sample_dir)) if f.lower().endswith(valid_exts)]
+    
+    # Initialize default sample so the app immediately shows a live prediction
+    if 'selected_sample' not in st.session_state and sample_files:
+        st.session_state['selected_sample'] = sample_files[0]
+    
+    # Sample Images Showcase Section
+    if sample_files:
+        st.markdown('### 🖼️ Test with Sample Images')
+        st.caption('Click any sample photo below to immediately classify it, or upload your own image below.')
+        
+        cols_per_row = 4
+        for row_start in range(0, len(sample_files), cols_per_row):
+            row_samples = sample_files[row_start:row_start + cols_per_row]
+            cols = st.columns(len(row_samples))
+            for idx, sample_name in enumerate(row_samples):
+                sample_idx = row_start + idx
+                sample_path = os.path.join(sample_dir, sample_name)
+                with cols[idx]:
+                    try:
+                        thumb = Image.open(sample_path)
+                        st.image(thumb, use_column_width=True)
+                    except Exception:
+                        st.write(f"Sample #{sample_idx + 1}")
+                    
+                    is_current = (st.session_state.get('selected_sample') == sample_name)
+                    btn_label = f"✓ Sample {sample_idx + 1}" if is_current else f"Test #{sample_idx + 1}"
+                    btn_type = "primary" if is_current else "secondary"
+                    if st.button(btn_label, key=f"btn_sample_{sample_idx}", type=btn_type, use_container_width=True):
+                        st.session_state['selected_sample'] = sample_name
+                        st.rerun()
+        st.markdown('---')
+
+    # Main content layout
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader('📤 Upload Image')
+        st.subheader('📤 Upload Custom Image')
         uploaded_file = st.file_uploader(
-            'Choose a flower image...',
-            type=['jpg', 'jpeg', 'png'],
-            help='Supported formats: JPG, JPEG, PNG'
+            'Upload a flower image from your device...',
+            type=['jpg', 'jpeg', 'png', 'webp'],
+            help='Supported formats: JPG, JPEG, PNG, WEBP'
         )
         
+        # Determine active image (uploaded image takes priority over sample)
+        active_image = None
+        source_label = ""
+        
         if uploaded_file is not None:
-            # Display uploaded image
-            image = Image.open(uploaded_file)
-            st.image(image, caption='Uploaded Image', use_column_width=True)
+            active_image = Image.open(uploaded_file)
+            source_label = f"📁 Uploaded: {uploaded_file.name}"
+        elif st.session_state.get('selected_sample'):
+            selected_path = os.path.join(sample_dir, st.session_state['selected_sample'])
+            if os.path.exists(selected_path):
+                active_image = Image.open(selected_path)
+                sample_num = sample_files.index(st.session_state['selected_sample']) + 1 if st.session_state['selected_sample'] in sample_files else 1
+                source_label = f"🌸 Sample Flower #{sample_num}"
+        
+        if active_image is not None:
+            st.markdown(f"**Current Input:** `{source_label}`")
+            st.image(active_image, caption=source_label, use_column_width=True)
+        else:
+            st.info('👆 Choose a sample image above or upload an image to begin.')
     
     with col2:
-        if uploaded_file is not None:
-            st.subheader('🔍 Prediction Results')
-            
-            # Make prediction
-            with st.spinner('🌸 Analyzing flower...'):
-                predicted_class, confidence, top_3_predictions = predict_flower(model, image, class_names)
+        st.subheader('🔍 Classification Results')
+        
+        if active_image is not None:
+            with st.spinner('🌸 Analyzing flower species...'):
+                predicted_class, confidence, top_3_predictions = predict_flower(model, active_image, class_names)
             
             if predicted_class is not None:
-                # Display main prediction
+                # Main prediction card
                 st.markdown(f'''
                 <div class="prediction-box">
-                    <h2 style="text-align: center; color: #2E7D32; margin-bottom: 1rem;">
+                    <p style="text-align: center; font-size: 1rem; color: #555; margin: 0;">Predicted Species</p>
+                    <h2 style="text-align: center; color: #2E7D32; margin: 0.5rem 0 1rem 0;">
                         🌺 {predicted_class}
                     </h2>
-                    <p style="text-align: center; font-size: 1.5rem; color: #333;">
+                    <p style="text-align: center; font-size: 1.4rem; color: #222; margin: 0;">
                         Confidence: <strong>{confidence:.2%}</strong>
                     </p>
                 </div>
                 ''', unsafe_allow_html=True)
                 
-                # Display top 3 predictions
-                st.subheader('📊 Top 3 Predictions')
+                # Top 3 breakdown
+                st.markdown('#### 📊 Top 3 Predictions')
                 for i, (flower, conf) in enumerate(top_3_predictions, 1):
-                    st.write(f'{i}. **{flower}**: {conf:.2%}')
+                    col_name, col_conf = st.columns([3, 1])
+                    with col_name:
+                        st.write(f"**{i}. {flower}**")
+                    with col_conf:
+                        st.write(f"**{conf:.2%}**")
                     st.progress(float(conf))
         else:
-            st.info('👆 Please upload an image to get started!')
+            st.info('👈 Select a sample above or upload an image to see prediction results.')
     
     # Footer
     st.markdown('---')
     st.markdown('''
     <div style="text-align: center; color: #666; font-size: 0.9rem;">
-        🌸 Bangladeshi Flower Classifier | Built with Streamlit & TensorFlow
+        🌸 Bangladeshi Flower Classifier | Fine-tuned MobileNetV2 on ColoredFlowersBD
     </div>
     ''', unsafe_allow_html=True)
 
