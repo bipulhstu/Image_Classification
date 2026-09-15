@@ -153,31 +153,22 @@ def main():
     if 'selected_sample' not in st.session_state and sample_files:
         st.session_state['selected_sample'] = sample_files[0]
     
-    # Sample Images Showcase Section
+    # Sample Images Showcase Section (Buttons only, no images here)
     if sample_files:
-        st.markdown('### 🖼️ Test with Sample Images')
-        st.caption('Click any sample photo below to immediately classify it, or upload your own image below.')
+        st.markdown('### 🧪 Quick Test Samples')
+        st.caption('Click any test button below (Test 1 – Test 8) to immediately evaluate that flower sample:')
         
-        cols_per_row = 4
-        for row_start in range(0, len(sample_files), cols_per_row):
-            row_samples = sample_files[row_start:row_start + cols_per_row]
-            cols = st.columns(len(row_samples))
-            for idx, sample_name in enumerate(row_samples):
-                sample_idx = row_start + idx
-                sample_path = os.path.join(sample_dir, sample_name)
-                with cols[idx]:
-                    try:
-                        thumb = Image.open(sample_path)
-                        render_image(thumb)
-                    except Exception:
-                        st.write(f"Sample #{sample_idx + 1}")
-                    
-                    is_current = (st.session_state.get('selected_sample') == sample_name)
-                    btn_label = f"✓ Sample {sample_idx + 1}" if is_current else f"Test #{sample_idx + 1}"
-                    btn_type = "primary" if is_current else "secondary"
-                    if st.button(btn_label, key=f"btn_sample_{sample_idx}", type=btn_type, use_container_width=True):
-                        st.session_state['selected_sample'] = sample_name
-                        st.rerun()
+        # Display 8 clean buttons horizontally across columns
+        cols = st.columns(len(sample_files))
+        for idx, sample_name in enumerate(sample_files):
+            test_num = idx + 1
+            is_current = (st.session_state.get('selected_sample') == sample_name)
+            btn_label = f"✓ Test {test_num}" if is_current else f"Test {test_num}"
+            btn_type = "primary" if is_current else "secondary"
+            with cols[idx]:
+                if st.button(btn_label, key=f"btn_test_{test_num}", type=btn_type, use_container_width=True):
+                    st.session_state['selected_sample'] = sample_name
+                    st.rerun()
         st.markdown('---')
 
     # Main content layout
@@ -203,7 +194,7 @@ def main():
             if os.path.exists(selected_path):
                 active_image = Image.open(selected_path)
                 sample_num = sample_files.index(st.session_state['selected_sample']) + 1 if st.session_state['selected_sample'] in sample_files else 1
-                source_label = f"🌸 Sample Flower #{sample_num}"
+                source_label = f"🌸 Test {sample_num}"
         
         if active_image is not None:
             st.markdown(f"**Selected Source:** `{source_label}`")
