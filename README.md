@@ -217,7 +217,7 @@ streamlit run app.py
 ## 📬 Academic & Professional Contact
 
 **Md. Bipul Hossain**  
-- **Email**: bipul.cse.hstu@gmail.com
+- **Email**: bipulhstu@gmail.com
 - **LinkedIn**: [linkedin.com/in/bipulhstu](https://linkedin.com/in/bipulhstu)
 - **GitHub**: [github.com/bipulhstu](https://github.com/bipulhstu)
 - **Research Interests**: Computer Vision, Deep Learning, Edge AI, Visual Representation Learning, Medical Image Analysis
