@@ -83,6 +83,19 @@ def preprocess_image(image):
     image_array = image_array.astype('float32') / 255.0
     return image_array
 
+def render_image(image, caption=None):
+    """Safely render an image across all versions of Streamlit"""
+    try:
+        # Streamlit 1.43+ / 1.61+ (modern parameter)
+        st.image(image, caption=caption, width="stretch")
+    except TypeError:
+        try:
+            # Streamlit 1.20 - 1.42
+            st.image(image, caption=caption, use_container_width=True)
+        except TypeError:
+            # Legacy Streamlit fallback
+            st.image(image, caption=caption)
+
 def predict_flower(model, image, class_names):
     """Make prediction on the image"""
     try:
@@ -155,7 +168,7 @@ def main():
                 with cols[idx]:
                     try:
                         thumb = Image.open(sample_path)
-                        st.image(thumb, use_column_width=True)
+                        render_image(thumb)
                     except Exception:
                         st.write(f"Sample #{sample_idx + 1}")
                     
@@ -193,16 +206,22 @@ def main():
                 source_label = f"🌸 Sample Flower #{sample_num}"
         
         if active_image is not None:
-            st.markdown(f"**Current Input:** `{source_label}`")
-            st.image(active_image, caption=source_label, use_column_width=True)
+            st.markdown(f"**Selected Source:** `{source_label}`")
+            # Image details card
+            st.info(f"📐 **Resolution:** {active_image.width} × {active_image.height} px | **Mode:** {active_image.mode}")
+            render_image(active_image, caption=source_label)
         else:
             st.info('👆 Choose a sample image above or upload an image to begin.')
     
     with col2:
-        st.subheader('🔍 Classification Results')
+        st.subheader('🔍 Classification & Live Preview')
         
         if active_image is not None:
-            with st.spinner('🌸 Analyzing flower species...'):
+            # Display prominent image preview directly in the classification panel
+            st.markdown("**Specimen Under Evaluation:**")
+            render_image(active_image, caption=f"Active Input: {source_label}")
+            
+            with st.spinner('🌸 MobileNetV2 analyzing floral morphology and features...'):
                 predicted_class, confidence, top_3_predictions = predict_flower(model, active_image, class_names)
             
             if predicted_class is not None:
@@ -220,7 +239,7 @@ def main():
                 ''', unsafe_allow_html=True)
                 
                 # Top 3 breakdown
-                st.markdown('#### 📊 Top 3 Predictions')
+                st.markdown('#### 📊 Top 3 Class Probabilities')
                 for i, (flower, conf) in enumerate(top_3_predictions, 1):
                     col_name, col_conf = st.columns([3, 1])
                     with col_name:
