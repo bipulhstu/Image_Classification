@@ -1,13 +1,15 @@
 name: Keep Streamlit App Alive
 
 on:
+  push:
+    branches: [ main ]
   schedule:
-    # Runs every 8 hours (at 00:00, 08:00, 16:00 UTC) so it never hits the 12-hour idle sleep threshold
+    # Runs every 8 hours (00:00, 08:00, 16:00 UTC) to prevent the 12-hour idle sleep threshold
     - cron: '0 */8 * * *'
   workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
 
 jobs:
-  ping_app:
+  keep_alive:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python
@@ -20,36 +22,37 @@ jobs:
           pip install playwright
           playwright install chromium --with-deps
 
-      - name: Open App in Headless Browser
+      - name: Wake Streamlit App
         run: |
-          python -c "
+          python3 << 'PYEOF'
           from playwright.sync_api import sync_playwright
           import time
 
-          # Add your Streamlit app URLs here
-          app_urls = [
-              'https://flower-image-classify.streamlit.app/',
-              'https://anomaly-d.streamlit.app/'
-          ]
+          app_url = "https://bangladeshi-flower.streamlit.app/"
 
           with sync_playwright() as p:
               browser = p.chromium.launch(headless=True)
               context = browser.new_context(
-                  user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                  user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
               )
               page = context.new_page()
 
-              for url in app_urls:
-                  print(f'[*] Navigating to: {url}')
-                  try:
-                      response = page.goto(url, wait_until='networkidle', timeout=90000)
-                      # Wait 15 seconds to ensure Streamlit WebSocket connection establishes
+              print(f"[*] Navigating to: {app_url}")
+              try:
+                  page.goto(app_url, wait_until="networkidle", timeout=90000)
+                  time.sleep(15)
+
+                  wake_btn = page.locator('text="Yes, get this app back up!"')
+                  if wake_btn.count() > 0:
+                      print("[*] Sleeping app detected! Clicking wake button...")
+                      wake_btn.first.click()
                       time.sleep(15)
-                      status = response.status if response else 'Unknown'
-                      print(f'[+] Successfully loaded {url} (Status: {status})')
-                  except Exception as e:
-                      print(f'[-] Error visiting {url}: {e}')
+
+                  title = page.title()
+                  print(f"[+] Successfully loaded {app_url} - Title: {title}")
+              except Exception as e:
+                  print(f"[-] Warning/notice visiting {app_url}: {e}")
 
               browser.close()
-              print('[✓] Finished keep-alive check.')
-          "
+              print("[✓] Finished keep-alive check successfully.")
+          PYEOF
