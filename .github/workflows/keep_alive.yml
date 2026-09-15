@@ -1,0 +1,55 @@
+name: Keep Streamlit App Alive
+
+on:
+  schedule:
+    # Runs every 4 days at 06:00 UTC (Streamlit sleeps after ~7 days of inactivity)
+    - cron: '0 6 */4 * *'
+  workflow_dispatch: # Allows manual one-click testing from GitHub Actions tab
+
+jobs:
+  ping_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Playwright & Headless Chromium
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
+
+      - name: Open App in Headless Browser
+        run: |
+          python -c "
+          from playwright.sync_api import sync_playwright
+          import time
+
+          # Add your Streamlit app URLs here
+          app_urls = [
+              'https://flower-image-classify.streamlit.app/',
+              'https://anomaly-d.streamlit.app/'
+          ]
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True)
+              context = browser.new_context(
+                  user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+              )
+              page = context.new_page()
+
+              for url in app_urls:
+                  print(f'[*] Navigating to: {url}')
+                  try:
+                      response = page.goto(url, wait_until='networkidle', timeout=90000)
+                      # Wait 15 seconds to ensure Streamlit WebSocket connection establishes
+                      time.sleep(15)
+                      status = response.status if response else 'Unknown'
+                      print(f'[+] Successfully loaded {url} (Status: {status})')
+                  except Exception as e:
+                      print(f'[-] Error visiting {url}: {e}')
+
+              browser.close()
+              print('[✓] Finished keep-alive check.')
+          "
