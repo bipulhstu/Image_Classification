@@ -35,6 +35,14 @@ st.markdown('''
     margin: 1rem 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
+.unknown-box {
+    background: linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%);
+    padding: 1.5rem;
+    border-radius: 15px;
+    margin: 1rem 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+    border: 1px solid #FFB74D;
+}
 </style>
 ''', unsafe_allow_html=True)
 
@@ -141,6 +149,17 @@ def main():
         st.header('🌺 Supported Flowers')
         for i, flower in enumerate(class_names, 1):
             st.write(f'{i}. {flower}')
+            
+        st.header('⚙️ Detection Settings')
+        confidence_threshold = st.slider(
+            'Certainty Threshold',
+            min_value=30,
+            max_value=90,
+            value=60,
+            step=5,
+            format="%d%%",
+            help="If the model's top confidence score is below this percentage, the image is rejected as unknown/non-target."
+        ) / 100.0
     
     # Discover available sample images
     sample_dir = 'sample_images'
@@ -199,38 +218,53 @@ def main():
         if active_image is not None:
             st.markdown(f"**Selected Source:** `{source_label}`")
             # Image details card
-            st.info(f"📐 **Resolution:** {active_image.width} × {active_image.height} px | **Mode:** {active_image.mode}")
-            render_image(active_image, caption=source_label)
+            st.info(f"📐 **Specimen Details:** {active_image.width} × {active_image.height} px | {active_image.mode} mode")
         else:
-            st.info('👆 Choose a sample image above or upload an image to begin.')
+            st.info('👆 Choose a test sample above or upload an image to begin.')
     
     with col2:
         st.subheader('🔍 Classification & Live Preview')
         
         if active_image is not None:
-            # Display prominent image preview directly in the classification panel
-            st.markdown("**Specimen Under Evaluation:**")
-            render_image(active_image, caption=f"Active Input: {source_label}")
+            # Single prominent image preview directly in the classification panel
+            render_image(active_image, caption=f"Specimen Preview: {source_label}")
             
             with st.spinner('🌸 MobileNetV2 analyzing floral morphology and features...'):
                 predicted_class, confidence, top_3_predictions = predict_flower(model, active_image, class_names)
             
             if predicted_class is not None:
-                # Main prediction card
-                st.markdown(f'''
-                <div class="prediction-box">
-                    <p style="text-align: center; font-size: 1rem; color: #555; margin: 0;">Predicted Species</p>
-                    <h2 style="text-align: center; color: #2E7D32; margin: 0.5rem 0 1rem 0;">
-                        🌺 {predicted_class}
-                    </h2>
-                    <p style="text-align: center; font-size: 1.4rem; color: #222; margin: 0;">
-                        Confidence: <strong>{confidence:.2%}</strong>
-                    </p>
-                </div>
-                ''', unsafe_allow_html=True)
+                if confidence >= confidence_threshold:
+                    # Valid flower prediction card
+                    st.markdown(f'''
+                    <div class="prediction-box">
+                        <p style="text-align: center; font-size: 1rem; color: #555; margin: 0;">Predicted Species</p>
+                        <h2 style="text-align: center; color: #2E7D32; margin: 0.5rem 0 1rem 0;">
+                            🌺 {predicted_class}
+                        </h2>
+                        <p style="text-align: center; font-size: 1.4rem; color: #222; margin: 0;">
+                            Confidence: <strong>{confidence:.2%}</strong>
+                        </p>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                else:
+                    # Out-of-Distribution / Unknown flower card
+                    st.markdown(f'''
+                    <div class="unknown-box">
+                        <p style="text-align: center; font-size: 1.1rem; color: #D84315; margin: 0; font-weight: bold;">
+                            ⚠️ Not Recognized as One of the 13 Target Flowers
+                        </p>
+                        <p style="text-align: center; font-size: 0.95rem; color: #333; margin: 0.5rem 0;">
+                            Highest match was <strong>{predicted_class}</strong> ({confidence:.1%}), which is below the required <strong>{int(confidence_threshold*100)}%</strong> certainty threshold.
+                        </p>
+                        <p style="text-align: center; font-size: 0.85rem; color: #666; margin: 0;">
+                            This image appears to be an out-of-scope subject (non-flower image or a non-target plant species).
+                        </p>
+                    </div>
+                    ''', unsafe_allow_html=True)
                 
                 # Top 3 breakdown
-                st.markdown('#### 📊 Top 3 Class Probabilities')
+                header_text = '#### 📊 Top 3 Class Probabilities' if confidence >= confidence_threshold else '#### 📊 Nearest Relative Predictions'
+                st.markdown(header_text)
                 for i, (flower, conf) in enumerate(top_3_predictions, 1):
                     col_name, col_conf = st.columns([3, 1])
                     with col_name:
